@@ -1,33 +1,30 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import os
 
-# Load the first 1,000,000 rows of the CSV file
-df = pd.read_csv('trial_cosmosim.csv', nrows=10000000)
+# Define paths
+input_file = os.path.expanduser("~/bulk-flow-Rockstar/Data/Rockstar_snapnum125.csv")
+output_folder = os.path.expanduser("~/bulk-flow-Rockstar/Data")
+os.makedirs(output_folder, exist_ok=True)
 
-# Plot a density heatmap using column 6 (x) and column 7 (y)
-plt.figure(figsize=(10, 6))
-heatmap = sns.histplot(
-    data=df,
-    x=df.iloc[:, 5],
-    y=df.iloc[:, 6],
-    bins=75,                # Increase bin count for finer granularity
-    pmax=0.9,               # Clip the highest densities at 90% to reveal more contrast
-    cmap='plasma',          # Use a different colormap with more contrast
-    cbar=True,              # Add color bar (legend)
-    log_scale=(False, False) # Use log scale for color intensity (more contrast)
-)
+# Read the CSV file with just the header to get the column names
+header_df = pd.read_csv(input_file, nrows=0)
+columns = header_df.columns.tolist()  # Get the list of column names
 
-# Add labels and title
-plt.xlabel('X-axis')
-plt.ylabel('Y-axis')
-plt.title('halos densities')
+# Iterate over each column, read it one at a time, and save it
+for column in columns:
+    # Read just the current column
+    column_data = pd.read_csv(input_file, usecols=[column])  # Read only the current column
 
-# Save the heatmap plot as an image (PNG format)
-plt.savefig('density_heatmap_column6_vs_column7_contrast.png', dpi=300)
+    # Get the first entry of the column for the filename
+    first_entry = column_data.iloc[0, 0]  # Get the first entry of the column
 
-# Optionally, display the heatmap
-# plt.show()
+    # Sanitize the first entry to create a valid filename
+    filename_safe = str(first_entry).replace('/', '_').replace('\\', '_')  # Example of sanitizing
+    output_file = os.path.join(output_folder, f"{filename_safe}.csv")  # Create the output filename
 
-# Print success message
-print("Density heatmap saved as density_heatmap_column6_vs_column7_contrast.png")
+    # Save the current column to CSV without the index
+    column_data.to_csv(output_file, index=False)
+
+    print(f"Saved column '{column}' as '{output_file}'.")
+
+print("All columns have been saved as individual CSV files.")
