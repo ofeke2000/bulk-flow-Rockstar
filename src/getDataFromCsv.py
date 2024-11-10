@@ -15,11 +15,8 @@ for column in columns:
     # Read just the current column
     column_data = pd.read_csv(input_file, usecols=[column])  # Read only the current column
 
-    # Get the first entry of the column for the filename
-    first_entry = column_data.iloc[0, 0]  # Get the first entry of the column
-
-    # Sanitize the first entry to create a valid filename
-    filename_safe = str(first_entry).replace('/', '_').replace('\\', '_')  # Example of sanitizing
+    # Sanitize the column header to create a valid filename
+    filename_safe = column.replace('/', '_').replace('\\', '_')  # Example of sanitizing
     output_file = os.path.join(output_folder, f"{filename_safe}.csv")  # Create the output filename
 
     # Save the current column to CSV without the index
