@@ -1,45 +1,84 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 
-# Define paths
-output_folder = os.path.expanduser("~/bulk-flow-Rockstar/Results")
+# Define input and output folders
+input_folder = os.path.expanduser("~/bulk-flow-Rockstar/Data")  # Input folder
+output_folder = os.path.expanduser("~/bulk-flow-Rockstar/Results")  # Output folder
 
-# Load data from each direction
-x_data = pd.read_csv(os.path.join(output_folder, 'X_velocity.csv'))
-y_data = pd.read_csv(os.path.join(output_folder, 'Y_velocity.csv'))
-z_data = pd.read_csv(os.path.join(output_folder, 'Z_velocity.csv'))
+# Define input file paths
+r_sorted_file = os.path.join(input_folder, 'rSorted.csv')  # Sorted R file
+vx_sorted_file = os.path.join(input_folder, 'vx_sorted.csv')
+vy_sorted_file = os.path.join(input_folder, 'vy_sorted.csv')
+vz_sorted_file = os.path.join(input_folder, 'vz_sorted.csv')
 
-# Define the radii of the spheres (in arbitrary units, change as required)
-radii = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  # Example distances
+# Define output file path
+bulk_flow_file = os.path.join(output_folder, 'bulk_flow.csv')
 
-# Initialize lists to store average velocities
-avg_velocity_x = []
-avg_velocity_y = []
-avg_velocity_z = []
+# Parameters
+num_bins = 10  # Number of radial bins
 
-# Loop over each radius to calculate the average velocities
-for radius in radii:
-    # Select data within the current radius
-    # Note: This example assumes a hypothetical way of filtering the data points within each sphere,
-    # as real implementation requires spatial information of each point to calculate distances.
+# Load data
+r_sorted = pd.read_csv(r_sorted_file)
+vx_sorted = pd.read_csv(vx_sorted_file)
+vy_sorted = pd.read_csv(vy_sorted_file)
+vz_sorted = pd.read_csv(vz_sorted_file)
 
-    # Compute the average velocity for each direction within the current radius
-    avg_velocity_x.append(x_data['X_velocity'].sample(n=100).mean())  # Adjust n as necessary
-    avg_velocity_y.append(y_data['Y_velocity'].sample(n=100).mean())
-    avg_velocity_z.append(z_data['Z_velocity'].sample(n=100).mean())
+# Ensure all vectors have the same length
+assert len(r_sorted) == len(vx_sorted) == len(vy_sorted) == len(vz_sorted), \
+    "Mismatch in lengths of R and velocity files."
 
-# Plotting the results
-plt.figure(figsize=(10, 6))
-plt.plot(radii, avg_velocity_x, label='X Direction', marker='o')
-plt.plot(radii, avg_velocity_y, label='Y Direction', marker='o')
-plt.plot(radii, avg_velocity_z, label='Z Direction', marker='o')
+# Extract R values
+r_values = r_sorted['R'].values
 
-plt.xlabel('Radius')
-plt.ylabel('Average Velocity')
-plt.title('Bulk Flow Velocity vs. Radius')
-plt.legend()
-plt.grid()
-plt.savefig(os.path.join(output_folder, 'bulk_flow_velocity_vs_radius.png'), dpi=300)
-plt.show()
+# Determine radial bins (r_start is always 0)
+r_min = 0
+r_max = r_values.max()
+bin_edges = np.linspace(r_min, r_max, num_bins + 1)
+
+# Initialize lists to store results
+end_radii = []  # Bin end radii
+vx_means, vy_means, vz_means = [], [], []
+vx_variances, vy_variances, vz_variances = [], [], []
+
+# Calculate mean and variance for each bin
+for i in range(1, num_bins + 1):  # Start at the second edge to include r_start = 0
+    r_end = bin_edges[i]
+
+    # Get indices of points within the current radial bin (from 0 to r_end)
+    mask = (r_values >= r_min) & (r_values < r_end)
+
+    if mask.sum() == 0:  # Skip empty bins
+        continue
+
+    # Extract velocities within the bin
+    vx_bin = vx_sorted.iloc[mask].values.flatten()
+    vy_bin = vy_sorted.iloc[mask].values.flatten()
+    vz_bin = vz_sorted.iloc[mask].values.flatten()
+
+    # Calculate mean and variance for each direction
+    vx_means.append(np.mean(vx_bin))
+    vy_means.append(np.mean(vy_bin))
+    vz_means.append(np.mean(vz_bin))
+
+    vx_variances.append(np.var(vx_bin))
+    vy_variances.append(np.var(vy_bin))
+    vz_variances.append(np.var(vz_bin))
+
+    # Append the end radius of the bin
+    end_radii.append(r_end)
+
+# Save results to a DataFrame
+results = pd.DataFrame({
+    'Radius': end_radii,
+    'Vx_Mean': vx_means,
+    'Vy_Mean': vy_means,
+    'Vz_Mean': vz_means,
+    'Vx_Variance': vx_variances,
+    'Vy_Variance': vy_variances,
+    'Vz_Variance': vz_variances
+})
+
+# Save to CSV
+results.to_csv(bulk_flow_file, index=False)
+print(f"Bulk flow results saved to: {bulk_flow_file}")
