@@ -3,11 +3,11 @@ import numpy as np
 import os
 
 # Define paths
-output_folder = os.path.expanduser("~/bulk-flow-Rockstar/Results")
-x_file = os.path.join(output_folder, 'X_velocity.csv')
-y_file = os.path.join(output_folder, 'Y_velocity.csv')
-z_file = os.path.join(output_folder, 'Z_velocity.csv')
-r_file = os.path.join(output_folder, 'R_values.csv')  # Output file for r values
+output_folder = os.path.expanduser("~/bulk-flow-Rockstar/Data")
+x_file = os.path.join(output_folder, 'x.csv')
+y_file = os.path.join(output_folder, 'y.csv')
+z_file = os.path.join(output_folder, 'z.csv')
+r_file = os.path.join(output_folder, 'r.csv')  # Output file for r values
 
 # Read the x, y, and z velocity files
 x_data = pd.read_csv(x_file)

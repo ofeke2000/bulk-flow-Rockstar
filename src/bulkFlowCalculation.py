@@ -16,7 +16,7 @@ vz_sorted_file = os.path.join(input_folder, 'vz_sorted.csv')
 bulk_flow_file = os.path.join(output_folder, 'bulk_flow.csv')
 
 # Parameters
-num_bins = 10  # Number of radial bins
+num_bins = 100  # Number of radial bins
 
 # Load data
 r_sorted = pd.read_csv(r_sorted_file)
