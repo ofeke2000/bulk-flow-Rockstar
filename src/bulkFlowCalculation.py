@@ -21,8 +21,8 @@ for filename in os.listdir(data_dir):
     if filename.endswith(".h5"):
         parts = filename.split("_")[0]
         x = int(parts[1])
-        y = int(parts[2][1])
-        z = int(parts[3][1])
+        y = int(parts[3])
+        z = int(parts[5])
         print({x,y,z})
         bin_file_map[(x, y, z)] = os.path.join(data_dir, filename)
 
