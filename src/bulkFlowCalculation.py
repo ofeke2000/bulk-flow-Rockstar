@@ -7,14 +7,14 @@ import time
 import re
 
 #Run Parameters
-num_points = 2  # Number of random points
+num_points = 50  # Number of random points
 radius = 100.0  # Sphere radius
 box_size = 1000.0  # Simulation box size
 bin_size = 100.0  # Each bin represents 100 units in space
 bins_per_axis = int(box_size / bin_size)
 
 data_dir = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid_-1/grid_sorted_hdf5")
-output_csv = os.path.expanduser(f"~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid_-1/bulk_flow_R{radius}_samples{num_points}.csv")
+output_csv = os.path.expanduser(f"~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid_-1/bulk_flow_R = {radius}_samples = {num_points}.csv")
 
 def extract_bin_coords(filename):
     match = re.search(r"x(\d+)y(\d+)z(\d+)", filename)
