@@ -99,7 +99,7 @@ for point in range(num_points):
 
     results.append(center + [bulk_velocity])
     elapsed = time.time() - start_time
-    time_left = elapsed * (num_points / point) - elapsed
+    time_left = elapsed * (num_points / (point+1)) - elapsed
     print(f"Done {point:,} rows out of {num_points:,} in {elapsed:.2f} seconds, estimated {time_left / 60:.2f} minutes left")
 
 # Calculate average bulk flow across all points
