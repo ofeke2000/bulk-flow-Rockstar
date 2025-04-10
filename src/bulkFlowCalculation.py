@@ -7,7 +7,7 @@ import time
 import re
 
 #Run Parameters
-num_points = 1  # Number of random points
+num_points = 2  # Number of random points
 radius = 100.0  # Sphere radius
 box_size = 1000.0  # Simulation box size
 bin_size = 100.0  # Each bin represents 100 units in space
@@ -70,6 +70,7 @@ def periodic_distance(p1, p2):
 
 # Main computation
 results = []
+bulk_flow = []
 
 # Start timer
 start_time = time.time()
@@ -98,12 +99,13 @@ for point in range(num_points):
         bulk_velocity = np.nan  # No data in sphere
 
     results.append(center + [bulk_velocity])
+    bulk_flow.append(bulk_velocity)
     elapsed = time.time() - start_time
     time_left = elapsed * (num_points / (point+1)) - elapsed
     print(f"Done {point:,} rows out of {num_points:,} in {elapsed:.2f} seconds, estimated {time_left / 60:.2f} minutes left")
 
 # Calculate average bulk flow across all points
-average_bulk_flow = sum(bulk_velocity) / num_points
+average_bulk_flow = sum(bulk_flow) / num_points
 
 # Save to CSV
 with open(output_csv, "w", newline="") as csvfile:
