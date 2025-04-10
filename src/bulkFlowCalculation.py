@@ -78,11 +78,14 @@ start_time = time.time()
 for point in range(num_points):
     center = [random.uniform(0, box_size) for _ in range(3)]
     velocity_vectors = []
+    num_bins_used = 0
 
     for bin_idx in get_bins_in_radius(center, radius):
         bin_file = bin_file_map.get(bin_idx)
         if not bin_file:
             continue
+
+        num_bins_used += 1
 
         with h5py.File(bin_file, "r") as f:
             data = f["data"][:]
@@ -98,21 +101,26 @@ for point in range(num_points):
     else:
         bulk_velocity = np.nan  # No data in sphere
 
-    results.append(center + [bulk_velocity])
+    num_halos = len(velocity_vectors)
+
+    results.append(center + [bulk_velocity] + [num_bins_used] + [num_halos])
     bulk_flow.append(bulk_velocity)
     elapsed = time.time() - start_time
     time_left = elapsed * (num_points / (point+1)) - elapsed
-    print(f"Done {point:,} rows out of {num_points:,} in {elapsed:.2f} seconds, estimated {time_left / 60:.2f} minutes left")
+    print(f"Done {point+1:,} points out of {num_points:,} in {elapsed:.2f} seconds, estimated {time_left / 60:.2f} minutes left")
 
 # Calculate average bulk flow across all points
-average_bulk_flow = sum(bulk_flow) / num_points
+valid_flows = [v for v in bulk_flow if not np.isnan(v)]
+if valid_flows:
+    average_bulk_flow = sum(valid_flows) / len(valid_flows)
+else:
+    average_bulk_flow = float('nan')
 
 # Save to CSV
 with open(output_csv, "w", newline="") as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow([
-                        f"Radius = {radius:,} Num of points = {num_points:,} time = {elapsed:.2f}s bulk flow = {average_bulk_flow:.3f}"])
-    writer.writerow(["x", "y", "z", "bulk_velocity"])
+    writer.writerow([f"Radius = {radius:.0f}", f"Num of points = {num_points}", f"time = {elapsed:.0f}s", f"bulk flow = {average_bulk_flow:.2f}"])
+    writer.writerow(["x", "y", "z", "bulk_velocity", "Num_Bins", "Num_Halo's"])
     writer.writerows(results)
 
 print(f"Done! Bulk flow moments for {num_points} random points saved to:\n{output_csv}")
