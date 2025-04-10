@@ -4,6 +4,7 @@ import numpy as np
 import random
 import csv
 import time
+import re
 
 #Run Parameters
 num_points = 1  # Number of random points
@@ -15,16 +16,25 @@ bins_per_axis = int(box_size / bin_size)
 data_dir = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid_-1/grid_sorted_hdf5")
 output_csv = os.path.expanduser(f"~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid_-1/bulk_flow_R{radius}_samples{num_points}.csv")
 
+def extract_bin_coords(filename):
+    match = re.search(r"x(\d+)y(\d+)z(\d+)", filename)
+    if match:
+        return tuple(map(int, match.groups()))
+    else:
+        raise ValueError(f"Filename does not match bin pattern: {filename}")
+
 # Load all bin file names into a dictionary
 bin_file_map = {}
+
 for filename in os.listdir(data_dir):
-    if filename.endswith(".h5"):
-        parts = filename.split("_")[0]
-        x = int(parts[1])
-        y = int(parts[3])
-        z = int(parts[5])
-        print({x,y,z})
+    if not filename.endswith(".h5"):
+        continue
+
+    try:
+        x, y, z = extract_bin_coords(filename)
         bin_file_map[(x, y, z)] = os.path.join(data_dir, filename)
+    except ValueError as e:
+        print(f"Skipping file: {e}")
 
 # Function to get nearby bin indices using periodic boundaries
 def get_bins_in_radius(center, radius, box_size=1000, bins_per_axis=10):
