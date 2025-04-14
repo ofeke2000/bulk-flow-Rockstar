@@ -57,9 +57,9 @@ def get_bins_in_radius(center, radius, box_size = 1000,bin_size = 100):
             # Wrap around
             return list(range(min_idx, bins_per_axis)) + list(range(0, max_idx + 1))
 
-    x_bins = wrap_range(ix_min, ix_max)
-    y_bins = wrap_range(iy_min, iy_max)
-    z_bins = wrap_range(iz_min, iz_max)
+    x_bins = wrap_range(int(ix_min), int(ix_max))
+    y_bins = wrap_range(int(iy_min), int(iy_max))
+    z_bins = wrap_range(int(iz_min), int(iz_max))
 
     #Generate all bin combinations
     bins = [(x, y, z) for x in x_bins for y in y_bins for z in z_bins]
