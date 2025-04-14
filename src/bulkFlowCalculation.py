@@ -7,8 +7,8 @@ import time
 import re
 
 #Run Parameters
-num_points = 300  # Number of random points
-radius = 100.0  # Sphere radius
+num_points = 150  # Number of random points
+radius = 150.0  # Sphere radius
 box_size = 1000.0  # Simulation box size
 bin_size = 100.0  # Each bin represents 100 units in space
 bins_per_axis = int(box_size / bin_size)
