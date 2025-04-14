@@ -7,7 +7,7 @@ import time
 import re
 
 #Run Parameters
-num_points = 50  # Number of random points
+num_points = 10  # Number of random points
 radius = 120.0  # Sphere radius
 box_size = 1000.0  # Simulation box size
 bin_size = 100.0  # Each bin represents 100 units in space
@@ -37,29 +37,32 @@ for filename in os.listdir(data_dir):
         print(f"Skipping file: {e}")
 
 # Function to get nearby bin indices using periodic boundaries
-def get_bins_in_radius(center, radius, box_size=1000, bins_per_axis=10):
-    bin_size = box_size / bins_per_axis
-    bins = []
+def get_bins_in_radius(center, radius, box_size = 1000,bin_size = 100):
 
-    # Convert center and radius to bin indices
-    cx, cy, cz = center
-    min_bin_x = int((cx - radius) % box_size // bin_size)
-    max_bin_x = int((cx + radius) % box_size // bin_size)
-    min_bin_y = int((cy - radius) % box_size // bin_size)
-    max_bin_y = int((cy + radius) % box_size // bin_size)
-    min_bin_z = int((cz - radius) % box_size // bin_size)
-    max_bin_z = int((cz + radius) % box_size // bin_size)
+    bins_per_axis = box_size / bin_size
 
-    # Loop over bins in each direction
-    for i in range(min_bin_x, max_bin_x + 1):
-        for j in range(min_bin_y, max_bin_y + 1):
-            for k in range(min_bin_z, max_bin_z + 1):
-                # Use modulo for periodic boundary conditions
-                ii = i % bins_per_axis
-                jj = j % bins_per_axis
-                kk = k % bins_per_axis
-                bins.append((ii, jj, kk))
+    #Define cube corners: min and max coords
+    x_min, y_min, z_min = [(c - radius) % box_size for c in center]
+    x_max, y_max, z_max = [(c + radius) % box_size for c in center]
 
+    #Convert to bin indices
+    ix_min, iy_min, iz_min = [int(v // bin_size) for v in (x_min, y_min, z_min)]
+    ix_max, iy_max, iz_max = [int(v // bin_size) for v in (x_max, y_max, z_max)]
+
+    #Handle wrap-around using periodic boundary conditions
+    def wrap_range(min_idx, max_idx):
+        if max_idx >= min_idx:
+            return list(range(min_idx, max_idx + 1))
+        else:
+            # Wrap around
+            return list(range(min_idx, bins_per_axis)) + list(range(0, max_idx + 1))
+
+    x_bins = wrap_range(ix_min, ix_max)
+    y_bins = wrap_range(iy_min, iy_max)
+    z_bins = wrap_range(iz_min, iz_max)
+
+    #Generate all bin combinations
+    bins = [(x, y, z) for x in x_bins for y in y_bins for z in z_bins]
     return bins
 
 # Periodic distance
