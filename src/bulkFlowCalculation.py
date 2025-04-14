@@ -79,7 +79,7 @@ bulk_flow = []
 start_time = time.time()
 
 for point in range(num_points):
-    center = [random.uniform(0, box_size) for _ in range(3)]
+    center = int([random.uniform(0, box_size) for _ in range(3)])
     velocity_vectors = []
     num_bins_used = 0
 
