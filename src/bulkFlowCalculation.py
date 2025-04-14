@@ -46,8 +46,8 @@ def get_bins_in_radius(center, radius, box_size = 1000,bin_size = 100):
     x_max, y_max, z_max = [(c + radius) % box_size for c in center]
 
     #Convert to bin indices
-    ix_min, iy_min, iz_min = [int(v // bin_size) for v in (x_min, y_min, z_min)]
-    ix_max, iy_max, iz_max = [int(v // bin_size) for v in (x_max, y_max, z_max)]
+    ix_min, iy_min, iz_min = [int(v / bin_size) for v in (x_min, y_min, z_min)]
+    ix_max, iy_max, iz_max = [int(v / bin_size) for v in (x_max, y_max, z_max)]
 
     #Handle wrap-around using periodic boundary conditions
     def wrap_range(min_idx, max_idx):
