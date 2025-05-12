@@ -1,49 +1,37 @@
-import pandas as pd
 import matplotlib.pyplot as plt
-import os
 
-# Define file paths
-results_file = os.path.expanduser("~/bulk-flow-Rockstar/Results/bulk_flow.csv")
-output_folder = os.path.expanduser("~/bulk-flow-Rockstar/Results")
-plot_mean_file = os.path.join(output_folder, 'mean_velocities_plot.png')
-plot_variance_file = os.path.join(output_folder, 'velocity_variances_plot.png')
+# === INPUT DATA (you'll fill these in) ===
+radii = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250]  # Replace with your radii
+bulk_flow_magnitude = [273, 248, 234, 216, 193, 181, 172, 161, 149, 144, 130, 125, 120, 112, 106, 97, 96, 89, 80, 80, 76]  # Replace with your computed bulk flow magnitudes
 
-# Load precomputed bulk flow data
-results = pd.read_csv(results_file)
+# Optional: per-direction bulk flow if you have them
+#vx_means = [100, 90, 85, 80, 75]
+#vy_means = [200, 150, 130, 120, 110]
+#vz_means = [300, 260, 230, 210, 200]
 
-# Extract data for plotting
-radii = results['Radius']
-vx_means = results['Vx_Mean']
-vy_means = results['Vy_Mean']
-vz_means = results['Vz_Mean']
-vx_variances = results['Vx_Variance']
-vy_variances = results['Vy_Variance']
-vz_variances = results['Vz_Variance']
-
-# Plot mean velocities
-plt.figure(figsize=(10, 6))
-plt.plot(radii, vx_means, label='Vx Mean', marker='o')
-plt.plot(radii, vy_means, label='Vy Mean', marker='o')
-plt.plot(radii, vz_means, label='Vz Mean', marker='o')
-plt.xlabel('Radius [h-1.mpc]')
-plt.ylabel('Mean Velocity [km.s-1]')
-plt.title('Mean Velocities vs Radius')
-plt.legend()
+# === PLOT TOTAL BULK FLOW MAGNITUDE ===
+plt.figure(figsize=(8, 6))
+plt.plot(radii, bulk_flow_magnitude, marker='o', color='purple', label='Total Bulk Flow')
+plt.plot([50, 250], [275, 75], marker='o', label='fit', color='red')
+plt.xlabel('Radius')
+plt.ylabel('Bulk Flow Magnitude')
+plt.title('Bulk Flow vs Radius')
 plt.grid(True)
-plt.savefig(plot_mean_file)
-plt.close()
-print(f"Mean velocities plot saved to: {plot_mean_file}")
-
-# Plot velocity variances
-plt.figure(figsize=(10, 6))
-plt.plot(radii, vx_variances, label='Vx Variance', marker='o')
-plt.plot(radii, vy_variances, label='Vy Variance', marker='o')
-plt.plot(radii, vz_variances, label='Vz Variance', marker='o')
-plt.xlabel('Radius [h-1.mpc]')
-plt.ylabel('Velocity Variance [km2.s-2]')
-plt.title('Velocity Variances vs Radius')
 plt.legend()
-plt.grid(True)
-plt.savefig(plot_variance_file)
-plt.close()
-print(f"Velocity variances plot saved to: {plot_variance_file}")
+plt.tight_layout()
+plt.savefig("bulk_flow_vs_radius.png")
+plt.show()
+
+# === PLOT PER-DIRECTION (optional) ===
+#plt.figure(figsize=(8, 6))
+#plt.plot(radii, vx_means, marker='o', label='Vx Mean', color='red')
+#plt.plot(radii, vy_means, marker='o', label='Vy Mean', color='green')
+#plt.plot(radii, vz_means, marker='o', label='Vz Mean', color='blue')
+#plt.xlabel('Radius')
+#plt.ylabel('Mean Velocity in Each Direction')
+#plt.title('Directional Mean Velocities vs Radius')
+#plt.grid(True)
+#plt.legend()
+#plt.tight_layout()
+#plt.savefig("directional_means_vs_radius.png")
+#plt.show()

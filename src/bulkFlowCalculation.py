@@ -1,129 +1,71 @@
-import os
-import h5py
+import pandas as pd
 import numpy as np
 import random
+import os
 import csv
 import time
-import re
 
-#Run Parameters
-num_points = 150  # Number of random points
-radius = 150.0  # Sphere radius
-box_size = 1000.0  # Simulation box size
-bin_size = 100.0  # Each bin represents 100 units in space
-bins_per_axis = int(box_size / bin_size)
+# Parameters
+num_points = 500
+radius = 160.0
+box_size = 1000.0
 
-data_dir = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid_-1/grid_sorted_hdf5")
-output_csv = os.path.expanduser(f"~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid_-1/bulk_flow_R = {radius}_samples = {num_points}.csv")
+# Input/output paths
+input_csv = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/mdpl2_rockstar_125_pid-1_mvir12.csv")
+output_csv = os.path.expanduser(
+    f"~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/bulk_flow_R={radius}_samples={num_points}_fromCSV.csv"
+)
 
-def extract_bin_coords(filename):
-    match = re.search(r"x(\d+)y(\d+)z(\d+)", filename)
-    if match:
-        return tuple(map(int, match.groups()))
-    else:
-        raise ValueError(f"Filename does not match bin pattern: {filename}")
+# Load the CSV file (assume it has columns: mvir, rvir, rs, rockstarid, pid, x, y, z, vx, vy, vz)
+df = pd.read_csv(input_csv)
+positions = df[['x', 'y', 'z']].to_numpy()
+velocities = df[['vx', 'vy', 'vz']].to_numpy()
 
-# Load all bin file names into a dictionary
-bin_file_map = {}
-
-for filename in os.listdir(data_dir):
-    if not filename.endswith(".h5"):
-        continue
-
-    try:
-        x, y, z = extract_bin_coords(filename)
-        bin_file_map[(x, y, z)] = os.path.join(data_dir, filename)
-    except ValueError as e:
-        print(f"Skipping file: {e}")
-
-# Function to get nearby bin indices using periodic boundaries
-def get_bins_in_radius(center, radius, box_size = 1000,bin_size = 100):
-
-    bins_per_axis = int(box_size / bin_size)
-
-    #Define cube corners: min and max coords
-    x_min, y_min, z_min = [(c - radius) % box_size for c in center]
-    x_max, y_max, z_max = [(c + radius) % box_size for c in center]
-
-    #Convert to bin indices
-    ix_min, iy_min, iz_min = [int(v // bin_size) for v in (x_min, y_min, z_min)]
-    ix_max, iy_max, iz_max = [int(v // bin_size) for v in (x_max, y_max, z_max)]
-
-    #Handle wrap-around using periodic boundary conditions
-    def wrap_range(min_idx, max_idx):
-        if max_idx >= min_idx:
-            return list(range(min_idx, max_idx + 1))
-        else:
-            # Wrap around
-            return list(range(min_idx, bins_per_axis)) + list(range(0, max_idx + 1))
-
-    x_bins = wrap_range(ix_min, ix_max)
-    y_bins = wrap_range(iy_min, iy_max)
-    z_bins = wrap_range(iz_min, iz_max)
-
-    #Generate all bin combinations
-    bins = [(x, y, z) for x in x_bins for y in y_bins for z in z_bins]
-    return bins
-
-# Periodic distance
-def periodic_distance(p1, p2):
-    delta = np.abs(np.array(p1) - np.array(p2))
+# Function to compute periodic distance
+def periodic_distance(p1, p2, box_size):
+    delta = np.abs(p1 - p2)
     delta = np.where(delta > box_size / 2, box_size - delta, delta)
-    return np.sqrt((delta ** 2).sum())
+    return np.sqrt((delta ** 2).sum(axis=1))
 
-# Main computation
+# Run sampling
 results = []
 bulk_flow = []
-
-# Start timer
 start_time = time.time()
 
-for point in range(num_points):
-    center = [int(random.uniform(0, box_size)) for _ in range(3)]
-    velocity_vectors = []
-    num_bins_used = 0
+for i in range(num_points):
+    center = np.array([random.uniform(0, box_size) for _ in range(3)])
+    dists = periodic_distance(positions, center, box_size)
+    mask = dists <= radius
 
-    for bin_idx in get_bins_in_radius(center, radius):
-        bin_file = bin_file_map.get(bin_idx)
-        if not bin_file:
-            continue
+    selected_vels = velocities[mask]
+    num_halos = selected_vels.shape[0]
 
-        num_bins_used += 1
-
-        with h5py.File(bin_file, "r") as f:
-            data = f["data"][:]
-            for row in data:
-                x, y, z = row[5:8]
-                if periodic_distance(center, [x, y, z]) <= radius:
-                    vx, vy, vz = row[8:11]
-                    velocity_vectors.append([vx, vy, vz])
-
-    if velocity_vectors:
-        v = np.array(velocity_vectors)
-        bulk_velocity = np.sqrt(np.mean(v[:, 0]) ** 2 + np.mean(v[:, 1]) ** 2 + np.mean(v[:, 2]) ** 2)
+    if num_halos > 0:
+        vx_mean = np.mean(selected_vels[:, 0])
+        vy_mean = np.mean(selected_vels[:, 1])
+        vz_mean = np.mean(selected_vels[:, 2])
+        bulk_velocity = np.mean(np.sqrt(vx_mean ** 2 + vy_mean ** 2 + vz_mean ** 2))
     else:
-        bulk_velocity = np.nan  # No data in sphere
+        vx_mean = vy_mean = vz_mean = bulk_velocity = np.nan
 
-    num_halos = len(velocity_vectors)
-
-    results.append(center + [bulk_velocity] + [num_bins_used] + [num_halos])
+    results.append(
+        list(center)
+        + [vx_mean, vy_mean, vz_mean, bulk_velocity, num_halos]
+    )
     bulk_flow.append(bulk_velocity)
+
     elapsed = time.time() - start_time
-    time_left = elapsed * (num_points / (point+1)) - elapsed
-    print(f"Done {point+1:,} points out of {num_points:,} in {elapsed:.2f} seconds, estimated {time_left / 60:.2f} minutes left")
+    time_left = elapsed * (num_points / (i + 1)) - elapsed
+    print(f"Done {i + 1}/{num_points} in {elapsed:.1f}s, ~{time_left / 60:.0f} min left")
 
-# Calculate average bulk flow across all points
+# Save results
 valid_flows = [v for v in bulk_flow if not np.isnan(v)]
-if valid_flows:
-    average_bulk_flow = sum(valid_flows) / len(valid_flows)
-else:
-    average_bulk_flow = float('nan')
+average_bulk_flow = np.mean(valid_flows) if valid_flows else float('nan')
 
-# Save to CSV
 with open(output_csv, "w", newline="") as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow([f"Radius = {radius:.0f}", f"Num of points = {num_points}", f"time = {elapsed:.0f}s", f"bulk flow = {average_bulk_flow:.2f}"])
-    writer.writerow(["x", "y", "z", "bulk_velocity", "Num_Bins", "Num_Halo's"])
+    writer.writerow([f"Radius = {radius:.0f}", f"Points = {num_points}", f"Time = {elapsed:.0f}s", f"Mean Bulk Flow = {average_bulk_flow:.2f}"])
+    writer.writerow(["x", "y", "z", "vx_mean", "vy_mean", "vz_mean", "bulk_velocity", "Num_Halos"])
     writer.writerows(results)
 
-print(f"Done! Bulk flow moments for {num_points} random points saved to:\n{output_csv}")
+output_csv
