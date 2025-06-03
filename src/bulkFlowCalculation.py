@@ -7,7 +7,7 @@ import time
 
 # Parameters
 num_points = 500
-radius = 160.0
+radius = 5.0
 box_size = 1000.0
 
 # Input/output paths
