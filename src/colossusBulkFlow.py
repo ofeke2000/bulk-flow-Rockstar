@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from colossus.cosmology import cosmology
-from scipy.integrate import simps
+from scipy.integrate import simpson
 import csv
 import os
 
@@ -28,7 +28,7 @@ H0 = cosmo.H0  # Hubble constant in km/s/Mpc
 for R in radii:
     kR = k_vals * R
     integrand = k_vals**2 * P_k * W(kR)**2
-    integral = simps(integrand, k_vals)
+    integral = simpson(integrand, k_vals)
     V2 = (H0 * f)**2 / (2 * np.pi**2) * integral
     bulk_flows.append(np.sqrt(V2))
 
