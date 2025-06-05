@@ -12,6 +12,22 @@ cosmo = cosmology.getCurrent()
 # Parameters
 radii = np.arange(5, 251, 5)  # Radii in h^-1Mpc
 k_vals = np.logspace(-3, 1, 1000)  # k in h/Mpc
+z = 0.0
+
+# Numerical derivative of ln(D) w.r.t ln(a)
+def f_z(z=0)
+    a = 1.0 / (1.0 + z)
+
+    delta = 1e-4
+    D1 = cosmo.growthFactor(z)
+    D2 = cosmo.growthFactor(z + delta)
+
+    lnD1 = np.log(D1)
+    lnD2 = np.log(D2)
+    lna1 = np.log(a)
+    lna2 = np.log(1.0 / (1.0 + z + delta))
+
+    return (lnD2 - lnD1) / (lna2 - lna1)
 
 # Get power spectrum at z=0
 P_k = cosmo.matterPowerSpectrum(k_vals, 0)
@@ -22,7 +38,7 @@ def W(kR):
 
 # Compute bulk flow
 bulk_flows = []
-f = cosmo.growthRate(0)
+f = f_z
 H0 = cosmo.H0  # Hubble constant in km/s/Mpc
 
 for R in radii:
