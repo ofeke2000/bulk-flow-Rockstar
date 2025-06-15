@@ -11,14 +11,14 @@ box_size = 1000.0
 radii = range(5, 251, 5)  # Radii from 5 to 250 in steps of 5
 
 # Input/output paths
-input_csv = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/mdpl2_rockstar_125_pid-1_mvir12.csv")
-output_dir = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/bulk_flow_radius_series")
+input_csv = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_fof_mass12/mdpl2_fof_mass12.csv")
+output_dir = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_fof_mass12/bulk_flow_radius_series")
 summary_csv = os.path.join(output_dir, "bulk_flow_summary.csv")
 
 # Create output directory if it doesn't exist
 os.makedirs(output_dir, exist_ok=True)
 
-# Load the CSV file (assume it has columns: mvir, rvir, rs, rockstarid, pid, x, y, z, vx, vy, vz)
+# Load the CSV file (assume it has columns: mass, fofid, np, x, y, z, vx, vy, vz)
 df = pd.read_csv(input_csv)
 positions = df[['x', 'y', 'z']].to_numpy()
 velocities = df[['vx', 'vy', 'vz']].to_numpy()
@@ -39,7 +39,7 @@ for radius in radii:
 
     results = []
     bulk_flow = []
-    vx_list, vy_list, vz_list = [], []
+    vx_list, vy_list, vz_list = [], [], []
     halo_counts = []
 
     for i in range(num_points):
