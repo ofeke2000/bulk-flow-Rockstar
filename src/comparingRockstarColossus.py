@@ -1,21 +1,19 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
-# Load your simulation results
-summary_csv_Rockstar = "~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/bulk_flow_radius_series/bulk_flow_summary.csv"
-df_Rockstar = pd.read_csv(summary_csv)
+# Load Rockstar simulation results
+summary_csv_rockstar = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/bulk_flow_radius_series/bulk_flow_summary.csv")
+df_rockstar = pd.read_csv(summary_csv_rockstar)
+radii_rockstar = df_rockstar['Radius'].values  # Mpc/h
+sim_bulk_flow_rockstar = df_rockstar['Mean_Bulk_Velocity'].values  # km/s
 
-summary_csv_fof = "~/bulk-flow-Rockstar/Data/mdpl2_fof_mass12/mdpl2_fof_mass12.csv"
-df_fof = pd.read_csv(summary_csv)
-
-radii_Rockstar = df_Rockstar['Radius'].values  # Should be in Mpc/h
-sim_bulk_flow_Rockstar = df_Rockstar['Mean_Bulk_Velocity'].values  # In km/s
-
-radii_fof = df_Rockstar['Radius'].values  # Should be in Mpc/h
-sim_bulk_flow_fof = df_Rockstar['Mean_Bulk_Velocity'].values  # In km/s
-
-output_dir = "~/bulk-flow-Rockstar/Results"
+# Load FOF simulation results
+summary_csv_fof = os.path.expanduser("~/bulk-flow-Rockstar/Data/fof_simulation/bulk_flow_radius_series/bulk_flow_summary.csv")
+df_fof = pd.read_csv(summary_csv_fof)
+radii_fof = df_fof['Radius'].values  # Mpc/h
+sim_bulk_flow_fof = df_fof['Mean_Bulk_Velocity'].values  # km/s
 
 # Now, get the theoretical prediction from Colossus
 from colossus.cosmology import cosmology
@@ -61,21 +59,21 @@ def bulk_flow_rms(R):
 
 theory_bulk_flow = np.array([bulk_flow_rms(R) for R in radii])
 
-# Plot
+# Plotting
 plt.figure(figsize=(8,5))
-plt.plot(radii, sim_bulk_flow_Rockstar, 'o-', label='Simulation (Rockstar)')
-plt.plot(radii, sim_bulk_flow_fof, 'p-', label='Simulation (Rockstar)')
-plt.plot(radii, theory_bulk_flow, 'r-', label='ΛCDM Theory (Colossus)')
+plt.plot(radii_rockstar, sim_bulk_flow_rockstar, 'o-', label='Simulation (Rockstar)')
+plt.plot(radii_fof, sim_bulk_flow_fof, 's-', label='Simulation (FOF)')
+plt.plot(radii_rockstar, theory_bulk_flow, 'r-', label='\u039BCDM Theory (Colossus)')
 plt.xlabel('Radius [Mpc/h]')
 plt.ylabel('RMS Bulk Flow [km/s]')
-plt.title('Bulk Flow: Simulation vs. ΛCDM Theory')
+plt.title('Bulk Flow: Simulation vs. \u039BCDM Theory')
 plt.legend()
-plt.grid()
+plt.grid(True)
 plt.tight_layout()
-plt.show()
 
-# Save the plot
-    plt.tight_layout()
-    output_path = os.path.join(output_dir, "colossus Vs Simulation.png")
-    plt.savefig(output_path, dpi=300)
-    plt.close()
+# Save plot
+output_dir = os.path.expanduser('~/bulk-flow-Rockstar/Results')
+os.makedirs(output_dir, exist_ok=True)
+output_path = os.path.join(output_dir, 'bulk_flow_comparison_plot_with_simulations.png')
+plt.savefig(output_path)
+print(f"Plot saved to: {output_path}")
