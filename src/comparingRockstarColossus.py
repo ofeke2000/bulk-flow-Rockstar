@@ -3,11 +3,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Load your simulation results
-summary_csv = "~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/bulk_flow_radius_series/bulk_flow_summary.csv"
-df = pd.read_csv(summary_csv)
+summary_csv_Rockstar = "~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/bulk_flow_radius_series/bulk_flow_summary.csv"
+df_Rockstar = pd.read_csv(summary_csv)
 
-radii = df['Radius'].values  # Should be in Mpc/h
-sim_bulk_flow = df['Mean_Bulk_Velocity'].values  # In km/s
+summary_csv_fof = "~/bulk-flow-Rockstar/Data/mdpl2_fof_mass12/mdpl2_fof_mass12.csv"
+df_fof = pd.read_csv(summary_csv)
+
+radii_Rockstar = df_Rockstar['Radius'].values  # Should be in Mpc/h
+sim_bulk_flow_Rockstar = df_Rockstar['Mean_Bulk_Velocity'].values  # In km/s
+
+radii_fof = df_Rockstar['Radius'].values  # Should be in Mpc/h
+sim_bulk_flow_fof = df_Rockstar['Mean_Bulk_Velocity'].values  # In km/s
+
+output_dir = "~/bulk-flow-Rockstar/Results"
 
 # Now, get the theoretical prediction from Colossus
 from colossus.cosmology import cosmology
@@ -55,7 +63,8 @@ theory_bulk_flow = np.array([bulk_flow_rms(R) for R in radii])
 
 # Plot
 plt.figure(figsize=(8,5))
-plt.plot(radii, sim_bulk_flow, 'o-', label='Simulation (Rockstar)')
+plt.plot(radii, sim_bulk_flow_Rockstar, 'o-', label='Simulation (Rockstar)')
+plt.plot(radii, sim_bulk_flow_fof, 'p-', label='Simulation (Rockstar)')
 plt.plot(radii, theory_bulk_flow, 'r-', label='ΛCDM Theory (Colossus)')
 plt.xlabel('Radius [Mpc/h]')
 plt.ylabel('RMS Bulk Flow [km/s]')
@@ -64,3 +73,9 @@ plt.legend()
 plt.grid()
 plt.tight_layout()
 plt.show()
+
+# Save the plot
+    plt.tight_layout()
+    output_path = os.path.join(output_dir, "colossus Vs Simulation.png")
+    plt.savefig(output_path, dpi=300)
+    plt.close()
