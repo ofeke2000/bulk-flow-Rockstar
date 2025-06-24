@@ -10,7 +10,7 @@ radii_rockstar = df_rockstar['Radius'].values  # Mpc/h
 sim_bulk_flow_rockstar = df_rockstar['Mean_Bulk_Velocity'].values  # km/s
 
 # Load FOF simulation results
-summary_csv_fof = os.path.expanduser("~/bulk-flow-Rockstar/Data/fof_simulation/bulk_flow_radius_series/bulk_flow_summary.csv")
+summary_csv_fof = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_fof_mass12/bulk_flow_radius_series/bulk_flow_summary.csv")
 df_fof = pd.read_csv(summary_csv_fof)
 radii_fof = df_fof['Radius'].values  # Mpc/h
 sim_bulk_flow_fof = df_fof['Mean_Bulk_Velocity'].values  # km/s
@@ -57,7 +57,7 @@ def bulk_flow_rms(R):
     sigma_v = H0**2 * f**2 /(2 * np.pi**2)  * integral
     return np.sqrt(sigma_v)
 
-theory_bulk_flow = np.array([bulk_flow_rms(R) for R in radii])
+theory_bulk_flow = np.array([bulk_flow_rms(R) for R in radii_rockstar])
 
 # Plotting
 plt.figure(figsize=(8,5))
