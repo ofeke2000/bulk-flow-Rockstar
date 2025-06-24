@@ -70,7 +70,7 @@ pars.set_cosmology(
     omch2=(my_cosmo_params['Om0']-my_cosmo_params['Ob0'])*(my_cosmo_params['H0']/100)**2
 )
 pars.InitPower.set_params(ns=my_cosmo_params['ns'])
-pars.set_matter_power(redshift=0, kmax=max(k_vals))
+pars.set_matter_power(redshifts=[0], kmax=max(k_vals))
 results = camb.get_results(pars)
 kh, z, pk_camb = results.get_matter_power_spectrum(minkh=min(k_vals), maxkh=max(k_vals), npoints=len(k_vals))
 interp_pk_camb = interp1d(kh, pk_camb, bounds_error=False, fill_value=0)
