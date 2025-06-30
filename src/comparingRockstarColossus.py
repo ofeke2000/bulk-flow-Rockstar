@@ -3,11 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import camb
-from classy import Class
+# from classy import Class
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
 from colossus.cosmology import cosmology
-from scipy.special import spherical_jn
 
 # Load Rockstar simulation results
 summary_csv_rockstar = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/bulk_flow_radius_series/bulk_flow_summary.csv")
@@ -26,6 +25,7 @@ my_cosmo_params = {
     'flat': True,
     'H0': 67.77,
     'Om0': 0.307115,
+    'Ode0': 0.692885,
     'Ob0': 0.048206,
     'sigma8': 0.8228,
     'ns': 0.96
@@ -41,7 +41,7 @@ f = cosmo.Om0**0.55
 
 # Define top-hat window function
 def W(k, R):
-    return 3 * spherical_jn(1, k*R) / (k*R)
+    return 3 * (np.sin(k*R) - k*R * np.cos(k*R)) / ((k*R)**3 + 1e-10)
 
 # ======================== THEORETICAL CALCULATIONS ========================
 # Define k values for integration
@@ -50,7 +50,7 @@ k_vals = np.logspace(-4, 1, 500)  # k in h/Mpc
 # ----- Colossus calculation -----
 def integrand_colossus(k, R):
     pk = cosmo.matterPowerSpectrum(k, 0)
-    return pk * W(k, R)**2 * k**2
+    return pk * W(k, R)**2
 
 def bulk_flow_rms_colossus(R):
     k_min = 1e-4
@@ -62,34 +62,34 @@ def bulk_flow_rms_colossus(R):
 
 theory_colossus = np.array([bulk_flow_rms_colossus(R) for R in radii_rockstar])
 
-# # ----- CAMB calculation -----
-# # Set up CAMB parameters
-# pars = camb.CAMBparams()
-# pars.set_cosmology(
-#     H0=my_cosmo_params['H0'],
-#     ombh2=my_cosmo_params['Ob0']*(my_cosmo_params['H0']/100)**2,
-#     omch2=(my_cosmo_params['Om0']-my_cosmo_params['Ob0'])*(my_cosmo_params['H0']/100)**2
-# )
-# pars.InitPower.set_params(ns=my_cosmo_params['ns'])
-# pars.set_matter_power(redshifts=[0], kmax=max(k_vals))
-# results = camb.get_results(pars)
-# kh, z, pk_camb = results.get_matter_power_spectrum(minkh=min(k_vals), maxkh=max(k_vals), npoints=len(k_vals))
-# interp_pk_camb = interp1d(kh, pk_camb, bounds_error=False, fill_value=0)
-#
-# def integrand_camb(k, R):
-#     pk = interp_pk_camb(k)
-#     return pk * W(k, R)**2 * k**2
-#
-# def bulk_flow_rms_camb(R):
-#     k_min = 1e-4
-#     k_max = 10
-#     integral, _ = quad(lambda k: integrand_camb(k, R), k_min, k_max, limit=200000)
-#     H0 = my_cosmo_params['H0']
-#     sigma_v = H0**2 * f**2 /(2 * np.pi**2) * integral
-#     return np.sqrt(sigma_v)
-#
-# theory_camb = np.array([bulk_flow_rms_camb(R) for R in radii_rockstar])
-#
+# ----- CAMB calculation -----
+# Set up CAMB parameters
+pars = camb.CAMBparams()
+pars.set_cosmology(
+    H0=my_cosmo_params['H0'],
+    ombh2=my_cosmo_params['Ob0']*(my_cosmo_params['H0']/100)**2,
+    omch2=(my_cosmo_params['Om0']-my_cosmo_params['Ob0'])*(my_cosmo_params['H0']/100)**2
+)
+pars.InitPower.set_params(ns=my_cosmo_params['ns'])
+pars.set_matter_power(redshifts=[0], kmax=max(k_vals))
+results = camb.get_results(pars)
+kh, z, pk_camb = results.get_matter_power_spectrum(minkh=min(k_vals), maxkh=max(k_vals), npoints=len(k_vals))
+interp_pk_camb = interp1d(kh, pk_camb, bounds_error=False, fill_value=0)
+
+def integrand_camb(k, R):
+    pk = interp_pk_camb(k)
+    return pk * W(k, R)**2
+
+def bulk_flow_rms_camb(R):
+    k_min = 1e-4
+    k_max = 10
+    integral, _ = quad(lambda k: integrand_camb(k, R), k_min, k_max, limit=200000)
+    H0 = my_cosmo_params['H0']
+    sigma_v = H0**2 * f**2 /(2 * np.pi**2) * integral
+    return np.sqrt(sigma_v)
+
+theory_camb = np.array([bulk_flow_rms_camb(R) for R in radii_rockstar])
+
 # # ----- CLASS calculation -----
 # params_class = {
 #     'h': my_cosmo_params['H0']/100,
@@ -108,7 +108,7 @@ theory_colossus = np.array([bulk_flow_rms_colossus(R) for R in radii_rockstar])
 #
 # def integrand_class(k, R):
 #     pk = interp_pk_class(k)
-#     return pk * W(k, R)**2 * k**2
+#     return pk * W(k, R)**2
 #
 # def bulk_flow_rms_class(R):
 #     k_min = 1e-4
@@ -117,8 +117,8 @@ theory_colossus = np.array([bulk_flow_rms_colossus(R) for R in radii_rockstar])
 #     H0 = my_cosmo_params['H0']
 #     sigma_v = H0**2 * f**2 /(2 * np.pi**2) * integral
 #     return np.sqrt(sigma_v)
-
-theory_class = np.array([bulk_flow_rms_class(R) for R in radii_rockstar])
+#
+# theory_class = np.array([bulk_flow_rms_class(R) for R in radii_rockstar])
 
 # ======================== PLOTTING ========================
 plt.figure(figsize=(10, 6))
@@ -126,7 +126,7 @@ plt.plot(radii_rockstar, sim_bulk_flow_rockstar, 'o-', label='Simulation (Rockst
 plt.plot(radii_fof, sim_bulk_flow_fof, 's-', label='Simulation (FOF)')
 plt.plot(radii_rockstar, theory_colossus, 'r-', label='ΛCDM Theory (Colossus)')
 plt.plot(radii_rockstar, theory_camb, 'g--', label='ΛCDM Theory (CAMB)')
-plt.plot(radii_rockstar, theory_class, 'b-.', label='ΛCDM Theory (CLASS)')
+# plt.plot(radii_rockstar, theory_class, 'b-.', label='ΛCDM Theory (CLASS)')
 plt.xlabel('Radius [Mpc/h]')
 plt.ylabel('RMS Bulk Flow [km/s]')
 plt.title('Bulk Flow Comparison: Simulation vs. ΛCDM Theories')
@@ -145,4 +145,4 @@ print(f"Plot saved to: {output_path}")
 print("\nSample theoretical values (R=50 Mpc/h):")
 print(f"Colossus: {theory_colossus[9]:.1f} km/s")
 print(f"CAMB: {theory_camb[9]:.1f} km/s")
-print(f"CLASS: {theory_class[9]:.1f} km/s")
+# print(f"CLASS: {theory_class[9]:.1f} km/s")
