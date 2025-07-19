@@ -16,10 +16,10 @@ from colossus.cosmology import cosmology
 # -----------------------------
 # User Settings
 # -----------------------------
-N_PARTICLES = 5e4
+N_PARTICLES = 50_000
 BOX_SIZE = 100.0  # arbitrary units
 SOFTENING = 0.05  # softening length
-TOTAL_STEPS = 1e3
+TOTAL_STEPS = 1000
 SAVE_EVERY = 5
 SEED = 42
 
