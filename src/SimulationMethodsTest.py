@@ -19,7 +19,7 @@ from colossus.cosmology import cosmology
 N_PARTICLES = 10_000
 BOX_SIZE = 100.0  # arbitrary units
 SOFTENING = 0.05  # softening length
-TOTAL_STEPS = 100
+TOTAL_STEPS = 500
 SAVE_EVERY = 5
 SEED = 42
 
