@@ -746,8 +746,8 @@ def main():
     a_init = 1.0 / (1.0 + 50.0)  # z=50 initial scale factor
     a_final = 1.0  # z=0
     steps_for_structure = TOTAL_STEPS  # Adjust to suit your needs
-    save_every = 5
-    dt = 0.01  # timestep size (adjust if needed)
+    save_every = SAVE_EVERY
+    dt = 0.05  # timestep size (adjust if needed)
 
     # Generate initial conditions again with Zel'dovich for safety
     np.random.seed(SEED)
