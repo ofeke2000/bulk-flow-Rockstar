@@ -745,7 +745,7 @@ def main():
     # Simulation parameters
     a_init = 1.0 / (1.0 + 50.0)  # z=50 initial scale factor
     a_final = 1.0  # z=0
-    steps_for_structure = 100  # Adjust to suit your needs
+    steps_for_structure = TOTAL_STEPS  # Adjust to suit your needs
     save_every = 5
     dt = 0.01  # timestep size (adjust if needed)
 
