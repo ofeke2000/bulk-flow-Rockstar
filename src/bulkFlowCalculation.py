@@ -6,13 +6,13 @@ import csv
 import time
 
 # Parameters
-num_points = 3000
+num_points = 10000
 box_size = 1000.0
 radii = range(5, 251, 5)  # Radii from 5 to 250 in steps of 5
 
 # Input/output paths
-input_csv = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_fof_mass12/mdpl2_fof_mass12.csv")
-output_dir = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_fof_mass12/bulk_flow_radius_series")
+input_csv = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/mdpl2_rockstar_125_pid-1_mvir12.csv")
+output_dir = os.path.expanduser("~/bulk-flow-Rockstar/Data/mdpl2_rockstar_125_pid-1_mvir12/bulk_flow_radius_series")
 summary_csv = os.path.join(output_dir, "bulk_flow_summary.csv")
 
 # Create output directory if it doesn't exist
@@ -55,12 +55,12 @@ for radius in radii:
             vx_mean = np.mean(selected_vels[:, 0])
             vy_mean = np.mean(selected_vels[:, 1])
             vz_mean = np.mean(selected_vels[:, 2])
-            bulk_velocity = np.sqrt(vx_mean ** 2 + vy_mean ** 2 + vz_mean ** 2)
+            bulk_velocity_squared= vx_mean ** 2 + vy_mean ** 2 + vz_mean ** 2
         else:
-            vx_mean = vy_mean = vz_mean = bulk_velocity = np.nan
+            vx_mean = vy_mean = vz_mean = bulk_velocity_squared = np.nan
 
-        results.append(list(center) + [vx_mean, vy_mean, vz_mean, bulk_velocity, num_halos])
-        bulk_flow.append(bulk_velocity)
+        results.append(list(center) + [vx_mean, vy_mean, vz_mean, bulk_velocity_squared, num_halos])
+        bulk_flow.append(bulk_velocity_squared)
         vx_list.append(vx_mean)
         vy_list.append(vy_mean)
         vz_list.append(vz_mean)
@@ -98,7 +98,7 @@ for radius in radii:
 # Save summary CSV
 with open(summary_csv, "w", newline="") as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(["Radius", "Mean_vx", "Mean_vy", "Mean_vz", "Mean_Bulk_Velocity", "Average_Num_Halos"])
+    writer.writerow(["Radius", "Mean_vx", "Mean_vy", "Mean_vz", "Mean_Bulk_Velocity_Squared", "Average_Num_Halos"])
     writer.writerows(summary)
 
 print(f"All radii processed.")
