@@ -16,10 +16,10 @@ from colossus.cosmology import cosmology
 # -----------------------------
 # User Settings
 # -----------------------------
-N_PARTICLES = 10_000
+N_PARTICLES = 5e4
 BOX_SIZE = 100.0  # arbitrary units
 SOFTENING = 0.05  # softening length
-TOTAL_STEPS = 500
+TOTAL_STEPS = 1e3
 SAVE_EVERY = 5
 SEED = 42
 
@@ -747,7 +747,7 @@ def main():
     a_final = 1.0  # z=0
     steps_for_structure = TOTAL_STEPS  # Adjust to suit your needs
     save_every = SAVE_EVERY
-    dt = 0.05  # timestep size (adjust if needed)
+    dt = 0.01  # timestep size (adjust if needed)
 
     # Generate initial conditions again with Zel'dovich for safety
     np.random.seed(SEED)
