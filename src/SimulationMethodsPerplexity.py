@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-import imageio
+import imageio.v2 as imageio
 from tqdm import tqdm
 from numba import njit, prange
 import pyfftw
@@ -266,8 +266,8 @@ def leapfrog_adaptive_mesh(positions, velocities, dt, total_steps, save_every, m
         return solve_poisson_2d(grid, BOX_SIZE)
 
     def compute_forces(positions):
-        coarse_density = assign_density(positions, BASE_GRID)
-        refined_density = assign_density(positions, REFINED_GRID)
+        coarse_density = assign_density_cic(positions, BASE_GRID, BOX_SIZE)
+        refined_density = assign_density_cic(positions, REFINED_GRID, BOX_SIZE)
 
         coarse_phi = np.fft.fft2(coarse_density)
         refined_phi = np.fft.fft2(refined_density)
