@@ -15,7 +15,7 @@ from colossus.cosmology import cosmology
 # -----------------------------
 # User Settings
 # -----------------------------
-N_PARTICLES = 50_000
+N_PARTICLES = 10_000
 BOX_SIZE = 100.0  # arbitrary units
 SOFTENING = 0.05  # softening length
 TOTAL_STEPS = 1000
