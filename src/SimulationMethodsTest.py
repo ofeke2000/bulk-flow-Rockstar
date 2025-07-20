@@ -21,12 +21,14 @@ BOX_SIZE = 100.0  # arbitrary units
 SOFTENING = 0.05  # softening length
 TOTAL_STEPS = 1000
 SAVE_EVERY = 5
+TIME_STEP = 0.01
 SEED = 42
 
 # Output directory
 BASE_DIR = os.path.expanduser('~/bulk-flow-Rockstar/Simulation-Methods-Test')
 
-METHODS = ['DirectSum', 'PM', 'AdaptiveMesh', 'BarnesHutTree', 'TreePM']
+#METHODS = ['DirectSum', 'PM', 'AdaptiveMesh', 'BarnesHutTree', 'TreePM']
+METHODS = ['PM', 'AdaptiveMesh', 'BarnesHutTree', 'TreePM']
 
 # -----------------------------
 # Setup Logging
@@ -148,84 +150,85 @@ for method in METHODS:
 
 log("Output directories created.")
 
-
-# -----------------------------
-# Gravitational Force (Direct Sum)
-# -----------------------------
-@njit(parallel=True)
-def compute_forces_direct_sum(positions, softening, box_size):
-    N = positions.shape[0]
-    forces = np.zeros_like(positions)
-    for i in prange(N):
-        fx, fy = 0.0, 0.0
-        xi, yi = positions[i, 0], positions[i, 1]
-        for j in range(N):
-            if i != j:
-                dx = xi - positions[j, 0]
-                dy = yi - positions[j, 1]
-
-                # Periodic BCs (minimum image convention)
-                dx -= box_size * np.round(dx / box_size)
-                dy -= box_size * np.round(dy / box_size)
-
-                r2 = dx * dx + dy * dy + softening * softening
-                inv_r3 = 1.0 / (r2 * np.sqrt(r2))
-
-                fx -= dx * inv_r3
-                fy -= dy * inv_r3
-        forces[i, 0] = fx
-        forces[i, 1] = fy
-    return forces
-
-
-# -----------------------------
-# Leapfrog Integrator
-# -----------------------------
-def leapfrog_direct_sum(positions, velocities, dt, total_steps, save_every, method_dir):
-    step_timer = Timer()
-    total_timer = Timer()
-    total_timer.start()
-
-    images_folder = os.path.join(method_dir, 'plots')
-    snapshots_folder = os.path.join(method_dir, 'snapshots')
-
-    for step in range(1, total_steps + 1):
-        step_timer.start()
-
-        # Half kick
-        forces = compute_forces_direct_sum(positions, SOFTENING, BOX_SIZE)
-        velocities += 0.5 * dt * forces
-
-        # Drift
-        positions += dt * velocities
-        positions %= BOX_SIZE  # Periodic BCs
-
-        # Full kick
-        forces = compute_forces_direct_sum(positions, SOFTENING, BOX_SIZE)
-        velocities += 0.5 * dt * forces
-
-        # Save and plot
-        if step % save_every == 0:
-            snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
-            save_snapshot_hdf5(snapshot_file, positions, velocities)
-
-            plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'Direct Sum')
-
-        # Logging
-        eta_sec = total_timer.eta(step, total_steps)
-        eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
-
-        log(f"[Direct Sum] Step {step}/{total_steps} complete. "
-            f"Elapsed: {step_timer.elapsed():.2f}s. ETA: {eta_str}")
-
-    # Generate video
-    video_path = os.path.join(method_dir, 'simulation.mp4')
-    make_video(images_folder, video_path)
-    log("[Direct Sum] Video generated.")
-
-    total_elapsed = total_timer.elapsed()
-    log(f"[Direct Sum] Simulation complete. Total time: {total_elapsed:.2f} seconds.")
+############################################################################################
+# # -----------------------------
+# # Gravitational Force (Direct Sum)
+# # -----------------------------
+# @njit(parallel=True)
+# def compute_forces_direct_sum(positions, softening, box_size):
+#     N = positions.shape[0]
+#     forces = np.zeros_like(positions)
+#     for i in prange(N):
+#         fx, fy = 0.0, 0.0
+#         xi, yi = positions[i, 0], positions[i, 1]
+#         for j in range(N):
+#             if i != j:
+#                 dx = xi - positions[j, 0]
+#                 dy = yi - positions[j, 1]
+#
+#                 # Periodic BCs (minimum image convention)
+#                 dx -= box_size * np.round(dx / box_size)
+#                 dy -= box_size * np.round(dy / box_size)
+#
+#                 r2 = dx * dx + dy * dy + softening * softening
+#                 inv_r3 = 1.0 / (r2 * np.sqrt(r2))
+#
+#                 fx -= dx * inv_r3
+#                 fy -= dy * inv_r3
+#         forces[i, 0] = fx
+#         forces[i, 1] = fy
+#     return forces
+#
+#
+# # -----------------------------
+# # Leapfrog Integrator
+# # -----------------------------
+# def leapfrog_direct_sum(positions, velocities, dt, total_steps, save_every, method_dir):
+#     step_timer = Timer()
+#     total_timer = Timer()
+#     total_timer.start()
+#
+#     images_folder = os.path.join(method_dir, 'plots')
+#     snapshots_folder = os.path.join(method_dir, 'snapshots')
+#
+#     for step in range(1, total_steps + 1):
+#         step_timer.start()
+#
+#         # Half kick
+#         forces = compute_forces_direct_sum(positions, SOFTENING, BOX_SIZE)
+#         velocities += 0.5 * dt * forces
+#
+#         # Drift
+#         positions += dt * velocities
+#         positions %= BOX_SIZE  # Periodic BCs
+#
+#         # Full kick
+#         forces = compute_forces_direct_sum(positions, SOFTENING, BOX_SIZE)
+#         velocities += 0.5 * dt * forces
+#
+#         # Save and plot
+#         if step % save_every == 0:
+#             snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
+#             save_snapshot_hdf5(snapshot_file, positions, velocities)
+#
+#             plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
+#             plot_particles(positions, plot_file, step, 'Direct Sum')
+#
+#         # Logging
+#         eta_sec = total_timer.eta(step, total_steps)
+#         eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
+#
+#         log(f"[Direct Sum] Step {step}/{total_steps} complete. "
+#             f"Elapsed: {step_timer.elapsed():.2f}s. ETA: {eta_str}")
+#
+#     # Generate video
+#     video_path = os.path.join(method_dir, 'simulation.mp4')
+#     make_video(images_folder, video_path)
+#     log("[Direct Sum] Video generated.")
+#
+#     total_elapsed = total_timer.elapsed()
+#     log(f"[Direct Sum] Simulation complete. Total time: {total_elapsed:.2f} seconds.")
+####################################################################################################
 
 # -----------------------------
 # Particle Mesh Method (using pyFFTW)
@@ -712,9 +715,6 @@ def leapfrog_tree_pm(positions, velocities, dt, total_steps, save_every, method_
     total_elapsed = total_timer.elapsed()
     log(f"[TreePM] Simulation complete. Total time: {total_elapsed:.2f} seconds.")
 
-import shutil
-import psutil
-
 def get_folder_size_mb(folder):
     total_size = 0
     for dirpath, _, filenames in os.walk(folder):
@@ -723,60 +723,47 @@ def get_folder_size_mb(folder):
             total_size += os.path.getsize(fp)
     return total_size / (1024 * 1024)
 
+
 def run_method(method_name, func, positions_init, velocities_init, dt, total_steps, save_every):
     method_dir = os.path.join(BASE_DIR, method_name)
     log(f"Starting {method_name} simulation...")
 
-    # Deep copy initial conditions
+    # Clone initial conditions
     positions = np.copy(positions_init)
     velocities = np.copy(velocities_init)
 
     start_time = time.time()
-    func(positions, velocities, dt, total_steps, save_every, method_dir)
-    elapsed = time.time() - start_time
+    try:
+        func(positions, velocities, dt, total_steps, save_every, method_dir)
+    except Exception as e:
+        log(f"[{method_name}] ERROR: {e}")
+        return float('nan'), float('nan')
 
+    elapsed = time.time() - start_time
     size_mb = get_folder_size_mb(method_dir)
+
     log(f"{method_name} completed in {elapsed:.2f} seconds. "
         f"Disk usage: {size_mb:.2f} MB")
 
     return elapsed, size_mb
 
-def main():
-    # Simulation parameters
-    a_init = 1.0 / (1.0 + 50.0)  # z=50 initial scale factor
-    a_final = 1.0  # z=0
-    steps_for_structure = TOTAL_STEPS  # Adjust to suit your needs
-    save_every = SAVE_EVERY
-    dt = 0.01  # timestep size (adjust if needed)
 
-    # Generate initial conditions again with Zel'dovich for safety
-    np.random.seed(SEED)
+def main():
+    # Use global simulation parameters (defined earlier)
+    total_steps = TOTAL_STEPS           # Number of steps from your configuration
+    save_every = SAVE_EVERY             # Snapshot saving interval
+    dt = TIME_STEP                      # Time step size
+    np.random.seed(SEED)                # For reproducibility
+
+    # Generate initial conditions
     positions_init = np.random.uniform(0, BOX_SIZE, size=(N_PARTICLES, 2))
     velocities_init = np.zeros_like(positions_init)
-    # For simplicity, no linear displacement this time, can add if needed.
 
     timings = {}
     disk_usages = {}
 
-    # Run methods one by one
-    timings['DirectSum'], disk_usages['DirectSum'] = run_method(
-        'DirectSum', leapfrog_direct_sum, positions_init, velocities_init, dt, steps_for_structure, save_every)
-
-    timings['PM'], disk_usages['PM'] = run_method(
-        'PM', leapfrog_particle_mesh, positions_init, velocities_init, dt, steps_for_structure, save_every)
-
-    timings['AdaptiveMesh'], disk_usages['AdaptiveMesh'] = run_method(
-        'AdaptiveMesh', leapfrog_adaptive_mesh, positions_init, velocities_init, dt, steps_for_structure, save_every)
-
-    timings['BarnesHutTree'], disk_usages['BarnesHutTree'] = run_method(
-        'BarnesHutTree', leapfrog_barnes_hut, positions_init, velocities_init, dt, steps_for_structure, save_every)
-
-    timings['TreePM'], disk_usages['TreePM'] = run_method(
-        'TreePM', leapfrog_tree_pm, positions_init, velocities_init, dt, steps_for_structure, save_every)
-
-    log("\n--- Summary ---")
-    for method in METHODS:
-        log(f"{method}: Time = {timings[method]:.2f} s, Disk usage = {disk_usages[method]:.2f} MB")
-
-if __name__ == "__main__":
-    main()
+    METHODS_SEQUENCE = [
+        # ('DirectSum', leapfrog_direct_sum),
+        ('PM', leapfrog_particle_mesh),
+        ('AdaptiveMesh', leapfrog_adaptive_mesh),
+        ('Barn
