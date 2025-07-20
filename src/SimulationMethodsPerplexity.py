@@ -190,7 +190,7 @@ def leapfrog_direct_sum(positions, velocities, dt, total_steps, save_every, meth
             save_snapshot_hdf5(snapshot_file, positions, velocities)
 
             plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'Direct Sum', redshift=z)
+            plot_particles(positions, plot_file, step, 'Direct Sum')
 
         # Logging
         eta_sec = total_timer.eta(step, total_steps)
@@ -318,7 +318,7 @@ def leapfrog_particle_mesh(positions, velocities, dt, total_steps, save_every, m
             snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
             save_snapshot_hdf5(snapshot_file, positions, velocities)
             plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'PM', redshift=z)
+            plot_particles(positions, plot_file, step, 'PM')
 
         eta_sec = total_timer.eta(step, total_steps)
         eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
@@ -429,7 +429,7 @@ def leapfrog_adaptive_mesh(positions, velocities, dt, total_steps, save_every, m
             snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
             save_snapshot_hdf5(snapshot_file, positions, velocities)
             plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'Adaptive Mesh', redshift=z)
+            plot_particles(positions, plot_file, step, 'Adaptive Mesh')
 
         eta_sec = total_timer.eta(step, total_steps)
         eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
@@ -556,7 +556,7 @@ def leapfrog_barnes_hut(positions, velocities, dt, total_steps, save_every, outp
 
         if (step % save_every) == 0:
             save_snapshot(step, positions, velocities, output_dir)
-            plot_particles(step, positions, output_dir, redshift=z)
+            plot_particles(step, positions, output_dir)
 
         if step % 10 == 0 or step == total_steps:
             print(f'Barnes-Hut step {step}/{total_steps} complete.')
@@ -644,7 +644,7 @@ def leapfrog_tree_pm(positions, velocities, dt, total_steps, save_every, method_
             snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
             save_snapshot_hdf5(snapshot_file, positions, velocities)
             plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'TreePM', redshift=z)
+            plot_particles(positions, plot_file, step, 'TreePM')
 
         eta_sec = total_timer.eta(step, total_steps)
         eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
