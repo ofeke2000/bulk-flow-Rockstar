@@ -15,7 +15,7 @@ from colossus.cosmology import cosmology
 # -----------------------------
 # User Settings
 # -----------------------------
-N_PARTICLES = 10_000
+N_PARTICLES = 5_000
 BOX_SIZE = 100.0  # arbitrary units
 SOFTENING = 0.05  # softening length
 TOTAL_STEPS = 1000
@@ -76,14 +76,21 @@ def save_snapshot_hdf5(filename, positions, velocities):
         f.create_dataset('positions', data=positions, compression="gzip", compression_opts=4)
         f.create_dataset('velocities', data=velocities, compression="gzip", compression_opts=4)
 
-def plot_particles(positions, out_path, step, method):
+def plot_particles(positions, out_path, step, method, redshift=None):
     plt.style.use('dark_background')
     fig, ax = plt.subplots(figsize=(8,8))
     plt.hist2d(positions[:,0], positions[:,1], bins=500, cmap='magma', range=[[0, BOX_SIZE], [0, BOX_SIZE]])
     ax.set_title(f"{method} - Step {step}")
     plt.axis('off')
+
+    # Add time/redshift text in top-left with yellow font for visibility
+    if redshift is not None:
+        ax.text(0.05 * BOX_SIZE, 0.95 * BOX_SIZE, f"z = {redshift:.3f}", color='yellow',
+                fontsize=14, ha='left', va='top', transform=ax.transData)
+
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     plt.close(fig)
+
 
 def make_video(image_folder, video_path):
     images = sorted([os.path.join(image_folder, img)
@@ -183,7 +190,7 @@ def leapfrog_direct_sum(positions, velocities, dt, total_steps, save_every, meth
             save_snapshot_hdf5(snapshot_file, positions, velocities)
 
             plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'Direct Sum')
+            plot_particles(positions, plot_file, step, 'Direct Sum', redshift=z)
 
         # Logging
         eta_sec = total_timer.eta(step, total_steps)
@@ -311,7 +318,7 @@ def leapfrog_particle_mesh(positions, velocities, dt, total_steps, save_every, m
             snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
             save_snapshot_hdf5(snapshot_file, positions, velocities)
             plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'PM')
+            plot_particles(positions, plot_file, step, 'PM', redshift=z)
 
         eta_sec = total_timer.eta(step, total_steps)
         eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
@@ -422,7 +429,7 @@ def leapfrog_adaptive_mesh(positions, velocities, dt, total_steps, save_every, m
             snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
             save_snapshot_hdf5(snapshot_file, positions, velocities)
             plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'Adaptive Mesh')
+            plot_particles(positions, plot_file, step, 'Adaptive Mesh', redshift=z)
 
         eta_sec = total_timer.eta(step, total_steps)
         eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
@@ -439,7 +446,7 @@ def leapfrog_adaptive_mesh(positions, velocities, dt, total_steps, save_every, m
 # Barnes-Hut Tree (2D)
 # -----------------------------
 
-class BHNode:
+class QuadTreeNode:
     def __init__(self, center, size):
         self.center = np.array(center, dtype=np.float64)
         self.size = float(size)
@@ -490,7 +497,7 @@ def make_child(node, quadrant):
         -0.5 if quadrant in [0, 2] else 0.5,
         -0.5 if quadrant in [0, 1] else 0.5
     ]) * node.size
-    return BHNode(node.center + offset, node.size/2)
+    return QuadTreeNode(node.center + offset, node.size/2)
 
 
 def subdivide(node):
@@ -498,7 +505,7 @@ def subdivide(node):
 
 
 def build_bh_tree(positions, masses, whole_box_size):
-    root = BHNode((whole_box_size/2, whole_box_size/2), whole_box_size/2)
+    root = QuadTreeNode((whole_box_size/2, whole_box_size/2), whole_box_size/2)
     indices = np.arange(len(positions))
     for idx in indices:
         insert_particle(root, positions[idx], masses[idx], idx, positions, masses, indices)
@@ -525,7 +532,7 @@ def compute_force_from_tree(node, pos, G, theta, epsilon, box_size, positions):
 # ---- Leapfrog Barnes-Hut Simulation ----
 
 def leapfrog_barnes_hut(positions, velocities, dt, total_steps, save_every, output_dir,
-                        box_size, softening, G=1.0, theta=0.7):
+                        box_size = BOX_SIZE, softening = SOFTENING, G=1.0, theta=0.7):
     N = positions.shape[0]
     masses = np.full(N, 1.0 / N)
     os.makedirs(output_dir, exist_ok=True)
@@ -549,7 +556,7 @@ def leapfrog_barnes_hut(positions, velocities, dt, total_steps, save_every, outp
 
         if (step % save_every) == 0:
             save_snapshot(step, positions, velocities, output_dir)
-            plot_particles(step, positions, output_dir)
+            plot_particles(step, positions, output_dir, redshift=z)
 
         if step % 10 == 0 or step == total_steps:
             print(f'Barnes-Hut step {step}/{total_steps} complete.')
@@ -637,7 +644,7 @@ def leapfrog_tree_pm(positions, velocities, dt, total_steps, save_every, method_
             snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
             save_snapshot_hdf5(snapshot_file, positions, velocities)
             plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'TreePM')
+            plot_particles(positions, plot_file, step, 'TreePM', redshift=z)
 
         eta_sec = total_timer.eta(step, total_steps)
         eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
