@@ -121,6 +121,86 @@ class Timer:
         remaining = (total_steps - current_step) * rate
         return remaining
 
+###########################################################################################
+# -----------------------------
+# Gravitational Force (Direct Sum)
+# -----------------------------
+@njit(parallel=True)
+def compute_forces_direct_sum(positions, softening, box_size):
+    N = positions.shape[0]
+    forces = np.zeros_like(positions)
+    for i in prange(N):
+        fx, fy = 0.0, 0.0
+        xi, yi = positions[i, 0], positions[i, 1]
+        for j in range(N):
+            if i != j:
+                dx = xi - positions[j, 0]
+                dy = yi - positions[j, 1]
+
+                # Periodic BCs (minimum image convention)
+                dx -= box_size * np.round(dx / box_size)
+                dy -= box_size * np.round(dy / box_size)
+
+                r2 = dx * dx + dy * dy + softening * softening
+                inv_r3 = 1.0 / (r2 * np.sqrt(r2))
+
+                fx -= dx * inv_r3
+                fy -= dy * inv_r3
+        forces[i, 0] = fx
+        forces[i, 1] = fy
+    return forces
+
+
+# -----------------------------
+# Leapfrog Integrator
+# -----------------------------
+def leapfrog_direct_sum(positions, velocities, dt, total_steps, save_every, method_dir):
+    step_timer = Timer()
+    total_timer = Timer()
+    total_timer.start()
+
+    images_folder = os.path.join(method_dir, 'plots')
+    snapshots_folder = os.path.join(method_dir, 'snapshots')
+
+    for step in range(1, total_steps + 1):
+        step_timer.start()
+
+        # Half kick
+        forces = compute_forces_direct_sum(positions, SOFTENING, BOX_SIZE)
+        velocities += 0.5 * dt * forces
+
+        # Drift
+        positions += dt * velocities
+        positions %= BOX_SIZE  # Periodic BCs
+
+        # Full kick
+        forces = compute_forces_direct_sum(positions, SOFTENING, BOX_SIZE)
+        velocities += 0.5 * dt * forces
+
+        # Save and plot
+        if step % save_every == 0:
+            snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
+            save_snapshot_hdf5(snapshot_file, positions, velocities)
+
+            plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
+            plot_particles(positions, plot_file, step, 'Direct Sum')
+
+        # Logging
+        eta_sec = total_timer.eta(step, total_steps)
+        eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
+
+        log(f"[Direct Sum] Step {step}/{total_steps} complete. "
+            f"Elapsed: {step_timer.elapsed():.2f}s. ETA: {eta_str}")
+
+    # Generate video
+    video_path = os.path.join(method_dir, 'simulation.mp4')
+    make_video(images_folder, video_path)
+    log("[Direct Sum] Video generated.")
+
+    total_elapsed = total_timer.elapsed()
+    log(f"[Direct Sum] Simulation complete. Total time: {total_elapsed:.2f} seconds.")
+###################################################################################################
+
 # -----------------------------
 # Cloud-In-Cell Density Assignment (Vectorized)
 # -----------------------------
@@ -358,127 +438,124 @@ def leapfrog_adaptive_mesh(positions, velocities, dt, total_steps, save_every, m
 # -----------------------------
 # Barnes-Hut Tree (2D)
 # -----------------------------
-class QuadTreeNode:
-    def __init__(self, x_min, x_max, y_min, y_max, particles_idx):
-        self.x_min, self.x_max = x_min, x_max
-        self.y_min, self.y_max = y_min, y_max
-        self.particles_idx = particles_idx
-        self.children = []
-        self.center_of_mass = None
-        self.total_mass = None
+
+class BHNode:
+    def __init__(self, center, size):
+        self.center = np.array(center, dtype=np.float64)
+        self.size = float(size)
+        self.mass = 0.0
+        self.com = np.zeros(2)
+        self.children = [None, None, None, None]
+        self.p_idx = None  # index if leaf (better for memory)
 
     def is_leaf(self):
-        return len(self.children) == 0
+        return all(child is None for child in self.children)
 
-    def subdivide(self, positions, max_particles=1):
-        if len(self.particles_idx) <= max_particles:
-            self.compute_mass_properties(positions)
+
+def get_quadrant(center, pos):
+    dx = pos[0] > center[0]
+    dy = pos[1] > center[1]
+    return int(dx) + 2 * int(dy)
+
+
+def insert_particle(node, pos, m, p_idx, positions, masses, indices):
+    if node.is_leaf():
+        if node.p_idx is None:
+            node.p_idx = p_idx
+            node.mass = m
+            node.com[:] = pos
             return
-
-        mx = 0.5 * (self.x_min + self.x_max)
-        my = 0.5 * (self.y_min + self.y_max)
-
-        quadrants = [
-            (self.x_min, mx, self.y_min, my),  # lower-left
-            (mx, self.x_max, self.y_min, my),  # lower-right
-            (self.x_min, mx, my, self.y_max),  # upper-left
-            (mx, self.x_max, my, self.y_max)   # upper-right
-        ]
-
-        for x0, x1, y0, y1 in quadrants:
-            idx = [i for i in self.particles_idx
-                   if x0 <= positions[i, 0] < x1 and y0 <= positions[i, 1] < y1]
-            if idx:
-                child = QuadTreeNode(x0, x1, y0, y1, idx)
-                child.subdivide(positions)
-                self.children.append(child)
-
-        self.compute_mass_properties(positions)
-
-    def compute_mass_properties(self, positions):
-        if len(self.particles_idx) == 0:
-            self.center_of_mass = np.array([0.0, 0.0])
-            self.total_mass = 0.0
         else:
-            pts = positions[self.particles_idx]
-            # Apply minimum image convention for center of mass
-            pts_wrapped = pts % BOX_SIZE
-            self.center_of_mass = np.mean(pts_wrapped, axis=0)
-            self.total_mass = len(self.particles_idx)
+            subdivide(node)
+            # Reinsert existing
+            rein_pos = positions[node.p_idx]
+            rein_m = masses[node.p_idx]
+            quadrant = get_quadrant(node.center, rein_pos)
+            if node.children[quadrant] is None:
+                node.children[quadrant] = make_child(node, quadrant)
+            insert_particle(node.children[quadrant], rein_pos, rein_m, node.p_idx, positions, masses, indices)
+            node.p_idx = None
 
-    def compute_force(self, particle_idx, positions, softening, theta):
-        pos = positions[particle_idx]
-        force = np.zeros(2, dtype=np.float64)
+    quadrant = get_quadrant(node.center, pos)
+    if node.children[quadrant] is None:
+        node.children[quadrant] = make_child(node, quadrant)
+    insert_particle(node.children[quadrant], pos, m, p_idx, positions, masses, indices)
 
-        if len(self.particles_idx) == 1 and self.particles_idx[0] == particle_idx:
-            return force  # No self-force
+    node.mass += m
+    node.com = (node.com*(node.mass-m) + m*pos) / node.mass
 
-        dx = self.center_of_mass[0] - pos[0]
-        dy = self.center_of_mass[1] - pos[1]
 
-        # Periodic BC minimum image
-        dx -= BOX_SIZE * np.round(dx / BOX_SIZE)
-        dy -= BOX_SIZE * np.round(dy / BOX_SIZE)
+def make_child(node, quadrant):
+    offset = np.array([
+        -0.5 if quadrant in [0, 2] else 0.5,
+        -0.5 if quadrant in [0, 1] else 0.5
+    ]) * node.size
+    return BHNode(node.center + offset, node.size/2)
 
-        r2 = dx*dx + dy*dy + softening*softening
-        d = max(self.x_max - self.x_min, self.y_max - self.y_min)
 
-        if self.is_leaf() or d / np.sqrt(r2) < theta:
-            inv_r3 = 1.0 / (r2 * np.sqrt(r2))
-            f = self.total_mass * np.array([dx, dy]) * inv_r3
-            return f
-        else:
-            for child in self.children:
-                force += child.compute_force(particle_idx, positions, softening, theta)
-            return force
+def subdivide(node):
+    node.children = [None, None, None, None]
 
-def leapfrog_barnes_hut(positions, velocities, dt, total_steps, save_every, method_dir, theta=0.5):
-    step_timer = Timer()
-    total_timer = Timer()
-    total_timer.start()
 
-    images_folder = os.path.join(method_dir, 'plots')
-    snapshots_folder = os.path.join(method_dir, 'snapshots')
+def build_bh_tree(positions, masses, whole_box_size):
+    root = BHNode((whole_box_size/2, whole_box_size/2), whole_box_size/2)
+    indices = np.arange(len(positions))
+    for idx in indices:
+        insert_particle(root, positions[idx], masses[idx], idx, positions, masses, indices)
+    return root
 
+def minimum_image(dx, box_size):
+    return dx - np.round(dx / box_size) * box_size
+
+def compute_force_from_tree(node, pos, G, theta, epsilon, box_size, positions):
+    # Recursively evaluate force from current node to single particle at pos
+    if node.mass == 0.0 or (node.is_leaf() and node.p_idx is not None and np.allclose(positions[node.p_idx], pos)):
+        return np.zeros(2)
+    dx = minimum_image(node.com - pos, box_size)
+    r = np.linalg.norm(dx) + epsilon
+    if node.is_leaf() or (node.size / r) < theta:
+        return G * node.mass * dx / (r**3)
+    else:
+        force = np.zeros(2)
+        for child in node.children:
+            if child is not None:
+                force += compute_force_from_tree(child, pos, G, theta, epsilon, box_size, positions)
+        return force
+
+# ---- Leapfrog Barnes-Hut Simulation ----
+
+def leapfrog_barnes_hut(positions, velocities, dt, total_steps, save_every, output_dir,
+                        box_size, softening, G=1.0, theta=0.7):
     N = positions.shape[0]
+    masses = np.full(N, 1.0 / N)
+    os.makedirs(output_dir, exist_ok=True)
 
-    for step in range(1, total_steps + 1):
-        step_timer.start()
-
-        root = QuadTreeNode(0.0, BOX_SIZE, 0.0, BOX_SIZE, list(range(N)))
-        root.subdivide(positions)
-
+    for step in range(1, total_steps+1):
+        root = build_bh_tree(positions, masses, box_size)
         forces = np.zeros_like(positions)
+        # Compute all forces
         for i in range(N):
-            forces[i] = root.compute_force(i, positions, SOFTENING, theta)
+            forces[i] = compute_force_from_tree(root, positions[i], G, theta, softening, box_size, positions)
+        # Half kick
         velocities += 0.5 * dt * forces
-
         positions += dt * velocities
-        positions %= BOX_SIZE
+        positions %= box_size
 
-        root = QuadTreeNode(0.0, BOX_SIZE, 0.0, BOX_SIZE, list(range(N)))
-        root.subdivide(positions)
-        forces.fill(0)
+        # Recompute forces after drift
+        root = build_bh_tree(positions, masses, box_size)
         for i in range(N):
-            forces[i] = root.compute_force(i, positions, SOFTENING, theta)
+            forces[i] = compute_force_from_tree(root, positions[i], G, theta, softening, box_size, positions)
         velocities += 0.5 * dt * forces
 
-        if step % save_every == 0:
-            snapshot_file = os.path.join(snapshots_folder, f'step_{step:04d}.h5')
-            save_snapshot_hdf5(snapshot_file, positions, velocities)
-            plot_file = os.path.join(images_folder, f'step_{step:04d}.png')
-            plot_particles(positions, plot_file, step, 'Barnes-Hut Tree')
+        if (step % save_every) == 0:
+            save_snapshot(step, positions, velocities, output_dir)
+            plot_particles(step, positions, output_dir)
 
-        eta_sec = total_timer.eta(step, total_steps)
-        eta_str = time.strftime('%H:%M:%S', time.gmtime(eta_sec))
-        log(f"[Barnes-Hut Tree] Step {step}/{total_steps} complete. Elapsed: {step_timer.elapsed():.2f}s. ETA: {eta_str}")
+        if step % 10 == 0 or step == total_steps:
+            print(f'Barnes-Hut step {step}/{total_steps} complete.')
 
-    video_path = os.path.join(method_dir, 'simulation.mp4')
-    make_video(images_folder, video_path)
-    log("[Barnes-Hut Tree] Video generated.")
-
-    total_elapsed = total_timer.elapsed()
-    log(f"[Barnes-Hut Tree] Simulation complete. Total time: {total_elapsed:.2f} seconds.")
+    generate_heatmap_video(output_dir)
+    log('[BarnesHutTree] Simulation complete.')
 
 # -----------------------------
 # TreePM Method (Hybrid PM + Barnes-Hut)
@@ -615,7 +692,7 @@ def main():
     disk_usages = {}
 
     METHODS_SEQUENCE = [
-        # ('DirectSum', leapfrog_direct_sum),  # Uncomment and implement with njit if desired
+        ('DirectSum', leapfrog_direct_sum),  # Uncomment and implement with njit if desired
         ('PM', leapfrog_particle_mesh),
         ('AdaptiveMesh', leapfrog_adaptive_mesh),
         ('BarnesHutTree', leapfrog_barnes_hut),
