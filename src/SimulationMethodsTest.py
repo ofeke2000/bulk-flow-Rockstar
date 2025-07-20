@@ -766,4 +766,21 @@ def main():
         # ('DirectSum', leapfrog_direct_sum),
         ('PM', leapfrog_particle_mesh),
         ('AdaptiveMesh', leapfrog_adaptive_mesh),
-        ('Barn
+        ('BarnesHutTree', leapfrog_barnes_hut),
+        ('TreePM', leapfrog_tree_pm),
+    ]
+
+    for method_name, func in METHODS_SEQUENCE:
+        elapsed, size_mb = run_method(
+            method_name, func, positions_init, velocities_init, dt, total_steps, save_every)
+        timings[method_name] = elapsed
+        disk_usages[method_name] = size_mb
+
+    log("\n--- Summary ---")
+    for method_name in timings:
+        log(f"{method_name}: Time = {timings[method_name]:.2f} s, "
+            f"Disk usage = {disk_usages[method_name]:.2f} MB")
+
+
+if __name__ == "__main__":
+    main()
